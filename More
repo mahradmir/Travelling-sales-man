@@ -1,0 +1,26 @@
+Okay, here is the English translation of the provided algorithm description:
+
+CombinedROIAlgUnified_AbsolutelyProfitable – Final Pure Logic Form
+Base Principle (Axiom 0):
+The graph is 2D Euclidean
+Distances are symmetric and satisfy the triangle inequality
+A provable lower bound (LB) exists
+Step 0: Solution Path Selection (SelectorRule)
+$ \mathcal{A}(G) := \begin{cases} \texttt{ExactSearch}(G) & n \leq n_3 \ \texttt{CombinedAdaptiveAlg_AP}(G) & n_3 < n \leq n_1 \ \texttt{StreamingAlg}(G) & n_1 < n \leq n_2 \ \texttt{WindowedConcorde_AP}(G) & n > n_2 \end{cases} $
+Step 1: Combined Adaptive Algorithm (CombinedAdaptiveAlg_AP)
+Form Spanner graph
+Calculate statistical lower bound (LB)
+Extract $ \tau_{min} $ and $ \tau_{max} $ via deterministic statistical analysis
+Improve tour with ROI filter: $ \text{Benefit}(m) \geq \tau \cdot \text{Cost}(m) \quad \wedge \quad \text{len}(T_{\text{after}}) \geq LB $
+Step 2: Streaming Algorithm (StreamingAlg)
+Clustering via multi-scale DBSCAN
+Local solving with ROI
+Connect clusters with MST between centers
+Combine tours with ROI-Stitching
+Step 3: Windowed Concorde Solver (WindowedConcorde_AP)
+Divide into windows W with overlap W0
+Exact solving of subproblems with Concorde
+Connect windows with valid ROI moves
+Reject moves if path length < LB
+Pure Logic Conclusion
+$ \begin{aligned} &\texttt{CombinedROIAlgUnified} = \text{Deterministic Selector} + \text{ROI-filtered Feasible Moves} \ &\text{All steps deterministic, no probabilistic statistical models or learning} \ &\text{Absolute profitability within the defined framework (Benefit} \geq \tau \cdot \text{Cost} \wedge \text{len} \geq \text{LB)} \ &\text{Redundancy elimination mechanism by tracking rejected moves} \end{aligned} $
