@@ -35,14 +35,29 @@ W	5 000	streaming window size
 
 (Set τ=0 to recover v2 behaviour; set W0=0 to disable Concorde.)
 
-Performance snapshot*
 
-n	gap	wall-time	RAM
-50 k	0 .5 %	4 min	1 GB
-250 k	1 %	40 min	3 GB
-5 M	2 %	2 h	6 GB
+capabilities:
 
-* Intel i7-13700, single NVMe SSD, Concorde off-thread.
+Exceptional scalability: Solves instances from a few thousand up to several million nodes with the same codebase while staying near-optimal.
+	•	Modular, intelligent design: Integrates five search engines and automatically invokes Concorde on small sub-windows—no manual intervention required.
+	•	ROI filtering: Executes only moves that deliver real gain, eliminating wasted CPU cycles.
+	•	Adjustable τ parameter: Lets you trade off accuracy versus speed, from real-time decisions to overnight optimizations.
+	•	Open-source and easily pluggable in Julia: Seamlessly connects to Python or CI pipelines.
+
+
+
+
+Use Cases:
+
+Last-mile delivery routing – Sequencing hundreds or thousands of daily drop-offs for couriers, parcel services, grocery and meal delivery to minimise drive time and fuel while respecting real-world constraints (traffic, parking, driver habits).  ￼
+	2.	Manufacturing tool-path optimisation (PCB/CNC/3-D printing) – Ordering drill holes, mill cuts or extrusion moves so the tool travels the shortest distance, cutting cycle time and wear on spindles or print heads.  ￼
+	3.	De-novo genome assembly – Ordering millions of DNA reads in an overlap-layout-consensus pipeline; a near-optimal TSP tour gives the scaffold on which contigs are built.  ￼
+	4.	Multi-waypoint UAV / drone missions – Planning inspection, mapping or delivery flights where each waypoint must be visited once and battery time is tight; trajectory-aware TSP variants cut mission duration by double-digit percentages.  ￼
+	5.	Telescope & satellite observation scheduling – Sequencing sky targets for ground- or space-based sensors (e.g., SSA, astronomy) to minimise slew time and maximise time on target within tight visibility windows.  
+
+
+ and ...
+
 
 License
 
