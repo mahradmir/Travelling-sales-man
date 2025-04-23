@@ -1,0 +1,166 @@
+# تابع اصلی: CombinedROIAlgUnified با ادغام Concorde برای پنجره‌های کوچک
+function CombinedROIAlgUnified(G,
+                               ε_min, ε_max,          # بازهٔ خطای تقریب
+                               maxIter_base,         # حد تکرار پایه برای ImprovedTSP
+                               d_base,               # اندازهٔ فهرست نامزد پایه
+                               C,                    # ثابت برای LB_stat
+                               α,                    # ضریب اسپنر هندسی
+                               M,                    # تعداد اجرای Multi‐Start
+                               P,                    # تعداد هسته‌های موازی/GPU
+                               ParamRanges,          # {τ_min, τ_max, min_samples}
+                               n3, n1, n2,           # آستانه‌های سوئیچ: Exact, Combined, Streaming, Windowed
+                               W0,                   # حداکثر اندازه برای ConcordeSolve
+                               β, δ,                 # ثابت‌های BHH برای Continuous
+                               W)                    # اندازهٔ پنجره برای WindowedDiscreteAlg
+    n ← |V(G)|
+
+    # ——— ۱. پیش‌پردازش مطلقاً سودده (F_all) ———
+    H ← DelaunayTriangulation(G)
+    S ← GeometricSpanner(H, α)              # ΔCost≤0
+    enable SIMD on distance/local‐move     # ΔCost≤0
+    if GPUAvailable(P):
+        offload LocalSearch to GPU          # ΔCost≤0
+
+    Profile ← Profile(G)
+    (ε_scales, τ_min, τ_max, min_samples) ←
+        SensitivityAnalysis(Profile, ParamRanges)  # ΔCost≤0, ΔBenefit≥0
+
+    # ——— ۲. انتخاب ROI-محور میان پنج روش ———
+    if n ≤ n3 then
+        # ۲٫۱ مسیر دقیق با Branch‐&‐Bound
+        (_, _, LB, UB) ← CombinedAdaptiveAlg(G,
+                                              ε_min, ε_max,
+                                              maxIter_base, d_base, C,
+                                              α, M, P,
+                                              ε_scales, τ_min, τ_max, min_samples)
+        Tour_exact ← ExactSearch(G, UB)
+        return Tour_exact, Length=UB, LB=LB, UB=UB
+
+    elseif n ≤ n1 then
+        # ۲٫۲ الگوریتم سلسله‌مراتبی ترکیبی
+        return CombinedAdaptiveAlg(G,
+                                  ε_min, ε_max,
+                                  maxIter_base, d_base, C,
+                                  α, M, P,
+                                  ε_scales, τ_min, τ_max, min_samples)
+
+    elseif n ≤ n2 then
+        # ۲٫۳ الگوریتم جریانی
+        return StreamingAlg(G, min_samples)
+
+    else
+        # ۲٫۴ الگوریتم پنجره‌ای گسسته با Concorde برای پنجره‌های ≤W0
+        return WindowedDiscreteAlgWithConcorde(G,
+                                               W, W0,
+                                               ε_min, ε_max,
+                                               maxIter_base, d_base, C,
+                                               α, M, P,
+                                               ε_scales, τ_min, τ_max, min_samples)
+    end
+
+
+# زیرفرآیند CombinedAdaptiveAlg برای n ≤ n1
+function CombinedAdaptiveAlg(G,
+                             ε_min, ε_max,
+                             maxIter_base, d_base, C,
+                             α, M, P,
+                             ε_scales, τ_min, τ_max, min_samples)
+    S ← GeometricSpanner(DelaunayTriangulation(G), α)
+    ε_seq ← MonitorProgress(G, ε_min, ε_max)
+
+    Clusters_raw ← ∅
+    for ε_DB in ε_scales:
+        Clusters_raw ← Clusters_raw ∪ DBSCAN(S, ε_DB, min_samples)
+    Clusters ← MergeHierarchical(Clusters_raw)
+
+    for each C_j in Clusters:
+        if |V(C_j)| > τ_max or |V(C_j)| < τ_min:
+            ε_DB_j ← AdjustEpsilon_DB(C_j, τ_min, τ_max)
+            C_j ← DBSCAN(S, ε_DB_j, min_samples)
+
+    parallel for each C_j in Clusters on P cores:
+        bestLen_j ← ∞; LB_j ← ∞
+        for i in 1..M:
+            ε_t ← ε_seq[current_iteration]
+            (tour, len, lb, ub) ←
+               ImprovedTSP(C_j, ε_t, maxIter_base, d_base, C)
+            LB_j ← min(LB_j, lb)
+            if len < bestLen_j:
+                bestLen_j ← len; Tour_j ← tour
+
+    Centers ← {PickRepresentative(C_j) for C_j in Clusters}
+    G_cent ← InducedSubgraph(S, Centers)
+    bestLen_cent ← ∞; LB_cent ← ∞
+    for i in 1..M:
+        ε_t ← ε_seq[current_iteration]
+        (tour, len, lb, ub) ←
+            ImprovedTSP(G_cent, ε_t, maxIter_base, d_base, C)
+        LB_cent ← min(LB_cent, lb)
+        if len < bestLen_cent:
+            bestLen_cent ← len; Tour_cent ← tour
+
+    Tour_merged ← MergeClusterTours({Tour_j}, Tour_cent)
+    ε_T ← ε_seq[last_iteration]
+    return LocalRefine(Tour_merged, CandidateList(S, d_base), ε_T)
+
+
+# زیرفرآیند ExactSearch برای n ≤ n3
+function ExactSearch(G, T):
+    bestTour ← None
+    procedure backtrack(prefix, used, ℓ):
+        if |prefix| = |V(G)| and edge(prefix[-1], prefix[0]):
+            if ℓ ≤ T:
+                bestTour ← prefix + [prefix[0]]; T ← ℓ
+        else:
+            LB_rem ← MST_lower_bound(on unvisited vertices)
+            if ℓ + LB_rem > T: return
+            for v in neighbors of last(prefix) not in used:
+                backtrack(prefix + [v], used ∪ {v}, ℓ + weight(last(prefix),v))
+    backtrack([v₁], {v₁}, 0)
+    return bestTour
+
+
+# زیرفرآیند StreamingAlg برای n1 < n ≤ n2
+function StreamingAlg(G, min_samples):
+    return LinearStreamTour(G, min_samples)
+
+
+# زیرفرآیند WindowedDiscreteAlgWithConcorde برای n > n2
+function WindowedDiscreteAlgWithConcorde(G,
+                                         W, W0,
+                                         ε_min, ε_max,
+                                         maxIter_base, d_base, C,
+                                         α, M, P,
+                                         ε_scales, τ_min, τ_max, min_samples)
+    n ← |V(G)|
+    k ← ceil(n / W)
+
+    parallel for i in 1..k:
+        G_i ← subgraph of W consecutive vertices
+        if |V(G_i)| ≤ W0:
+            Tour_i ← ConcordeSolve(G_i)           # F7: ΔCost≤0, ΔBenefit≥0
+        elseif |V(G_i)| ≤ n3:
+            (_, _, LB_i, UB_i) ← CombinedAdaptiveAlg(G_i,
+                                                     ε_min, ε_max,
+                                                     maxIter_base, d_base, C,
+                                                     α, M, P,
+                                                     ε_scales, τ_min, τ_max, min_samples)
+            Tour_i ← ExactSearch(G_i, UB_i)
+        elseif |V(G_i)| ≤ n1:
+            Tour_i ← CombinedAdaptiveAlg(G_i,
+                                        ε_min, ε_max,
+                                        maxIter_base, d_base, C,
+                                        α, M, P,
+                                        ε_scales, τ_min, τ_max, min_samples)
+        else:
+            Tour_i ← StreamingAlg(G_i, min_samples)
+
+    for each G_i:
+        c_i ← Centroid(G_i)
+    Order ← ContinuumApprox([c₁,…,c_k])             # مرتب‌سازی پنجره‌ها در زمان ثابت
+
+    Tour_partial ← Tour_{Order[1]}
+    for j in 2..k:
+        Tour_partial ← ConnectTours(Tour_partial, Tour_{Order[j]})
+
+    return LocalRefine(Tour_partial, CandidateList(S, d_base), ε_min)
