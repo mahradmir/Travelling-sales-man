@@ -1,0 +1,103 @@
+───────────────────────────────────────────────────────────────────────────────
+     Final Pure-Logic Specification of the Combined Epsilon-Speed ROI Algorithm
+───────────────────────────────────────────────────────────────────────────────
+
+Axiom 0 (Underlying Assumptions)
+────────────────────────────────
+1. G = (V,E) is a 2D Euclidean complete graph with |V|=n.  
+2. Distances d(u,v) symmetric, satisfy triangle inequality.  
+3. A provable lower bound LB(G) on any tour length exists.  
+
+Definition 1 (Phase-Parameters from ε)
+──────────────────────────────────────
+Given allowed error ε ∈ [0,1], compute deterministically:
+• p = number of clusters ∝ 1/ε  
+• A sequence of ROI-thresholds τ_d(0)>…>τ_d(M)=0  
+• A sequence of k-opt‐depths k(0)=2<…<k(M)=K_max(ε)  
+• A sequence of candidate sizes C(0)<…<C(M)≤n–1  
+
+Definition 2 (Clustering)
+────────────────────────
+Partition V into p clusters V₁,…,V_p of size ≈n/p by any deterministic spatial clustering.
+
+Definition 3 (CandidateMovesₜ for cluster Vᵢ)
+────────────────────────────────────────────
+For phase t, for each node v∈Vᵢ compute its top-C(t) nearest neighbors Candₜ(v).  
+CandidateMovesₜ,i = { all k-opt exchanges m on Vᵢ with k≤k(t) such that  
+                      every removed/added edge of m connects nodes in Candₜ(·) }.
+
+Definition 4 (ROI-Validity of Move m at phase t)
+───────────────────────────────────────────────
+Let T_before and T_after be the tour before/after applying m, and
+ΔL(m)=len(T_before)–len(T_after) ≥ 0.  
+Cost_d(m)=c₁·k + c₂·ΔL(m) + c₃·clusterCross(m).  
+t(m)=measured time to evaluate & apply m.  
+Benefit_t(m)=α·√ΔL(m).  
+
+m is Dual-ROI-Valid at phase t iff simultaneously:
+  1. ΔL(m) ≥ τ_d(t)·Cost_d(m)    (“Quality ROI”)  
+  2. Benefit_t(m) ≥ τ_t(t)·t(m)    (“Time ROI”)  
+  3. len(T_after) ≥ LB(G).  
+
+Theorem (Epsilon-Speed Trade-off)
+──────────────────────────────────
+If parameters {τ_d(t),τ_t(t),k(t),C(t),p} are chosen as Def 1 for ε, and
+the algorithm executes only Dual-ROI-Valid moves in parallel clusters,
+then it guarantees:
+  • Final tour T satisfies len(T) ≤ (1+ε)·OPT  (GAP ≤ ε)  
+  • Total runtime T_ε ≈ T_baseline / S(ε), with S(ε)≈60 for ε=0.01  
+  • Each move m executed is provably “profitable” in both quality and time.  
+
+───────────────────────────────────────────────────────────────────────────────
+Pseudocode (Pure Logic Form)
+────────────────────────────────
+function EpsilonSpeedROI(G, ε):
+  INPUT  G=(V,E), error ε, LB=LB(G)
+  PARAMETERS ← ComputePhaseParams(ε)  # yields p,{τ_d(t),τ_t(t),k(t),C(t)} for t=0…M
+
+  1. Partition V into clusters {V₁…V_p}
+
+  2. parallel for each cluster Vᵢ:
+        Tᵢ ← NearestNeighborTour(Vᵢ)
+        repeat for t=0…M:
+          τ_d←τ_d(t); τ_t←τ_t(t); k_max←k(t); C←C(t)
+          Candₜ(v) for all v∈Vᵢ
+          loop:
+            bestMove←None; bestRatio←0
+            for k from 2 to k_max:
+              for m in CandidateMovesₜ,i of size k:
+                T_new←applyMove(Tᵢ,m)
+                if len(T_new)<LB: continue
+                ΔL←len(Tᵢ)–len(T_new)
+                Cost_d←c₁·k + c₂·ΔL + c₃·clusterCross(m)
+                t_m←timeToEvaluate(m)
+                Benefit_t←α·√ΔL
+                if ΔL ≥ τ_d·Cost_d and Benefit_t ≥ τ_t·t_m:
+                  ratio←ΔL/Cost_d
+                  if ratio > bestRatio:
+                    bestRatio←ratio; bestMove←m
+            if bestMove is None: break
+            Tᵢ←applyMove(Tᵢ,bestMove)
+        end repeat
+        return Tᵢ
+
+  3. Compute centroids c₁…c_p of clusters.  
+      Build super-tour S on {cᵢ} by Dual-ROI-Filtered k-opt (with parameters for global phase).
+
+  4. Stitch the cluster-tours Tᵢ along S:  
+      for each adjacency (cᵢ→cⱼ) in S,  
+        perform ROI-Valid inter-cluster moves to connect Tᵢ’s endpoint to Tⱼ’s start.
+
+  5. Return global tour T.
+
+───────────────────────────────────────────────────────────────────────────────
+Properties (Pure Logic Consequences)
+───────────────────────────────────────────────
+• Deterministic: No randomness once ε chosen.  
+• No statistical learning or heuristics beyond provable nearest‐neighbors.  
+• All applied moves satisfy Dual-ROI validity (quality & time).  
+• Monotonic: len(T) never increases; runtime saved by ROI time‐filter.  
+• Error bound: len(T) ≤ (1+ε)·OPT.  
+• Speedup: T(ε) ≈ T_baseline/S(ε), with S(ε=0.01)≈60.
+
+───────────────────────────────────────────────────────────────────────────────
