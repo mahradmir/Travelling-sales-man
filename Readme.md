@@ -1,3 +1,77 @@
+v4
+## Description 
+This algorithm solves large-scale instances of the Euclidean Traveling Salesman Problem (TSP) using a multi-stage adaptive architecture. It ensures that every computation step is logically justified, absolutely profitable, and verifiably non-redundant. It is built entirely within the framework of deductive logic and arithmetic reasoning. 
+
+## Features 
+
+- Hybrid architecture (exact, adaptive, streaming, windowed) 
+- Pure logic-based move acceptance using: 
+  - Proven lower bounds (1-Tree, MST + closure, statistical) 
+  - Cost-benefit filters: Benefit(m) ≥ τ × Cost(m) 
+- SIMD + GPU acceleration (optional) 
+- Cluster-aware move filtering and ROI thresholding 
+- Modular sub-algorithms based on problem size (n₁, n₂, n₃) 
+- Deterministic, non-probabilistic, no ML or statistical estimations 
+
+## Submodules 
+
+### 1. ExactSearch (n ≤ n₃) 
+- Branch-and-Bound guided by UB and LB 
+- Guarantees optimal tour for small graphs 
+
+### 2. CombinedAdaptiveAlg_AP (n ≤ n₁) 
+- Tour initialization via Nearest Neighbor 
+- Local search via ImprovedTSP_LogicalROI 
+- Adaptive τ adjustment, restart, perturbation 
+
+### 3. StreamingAlg (n ≤ n₂) 
+- Space-efficient approximation 
+- Works on geometric cells 
+- Guarantees local-optimal stitching via MST 
+
+### 4. WindowedDiscreteAlgWithConcorde_AP (n > n₂) 
+- DFS order → windowed subinstances (W, W₀ overlap) 
+- Solves subproblems with Concorde TSP solver 
+- Stitches borders via minimum-cost matching 
+
+## Cost Function Cost(m) = c₁ * num_edges_changed(m) 
+        + c₂ * sum_distance_change(m) 
+        + c₃ * (1 if crosses_clusters(m) else 0) 
+ 
+
+## Parameters 
+
+| Name      | Role                            | Default  | 
+|-----------|----------------------------------|----------| 
+| n₁, n₂, n₃| Size thresholds                  | 5k, 20k, 50k | 
+| α         | Geometric spanner stretch       | 2.0      | 
+| τ         | ROI threshold (adaptive)        | 0.2–1.0  | 
+| ε_min/max | Sensitivity safe margins        | 0.01–0.1 | 
+| c₁–c₃     | Cost function weights            | 1.0, 1.0, 5.0 | 
+| C         | Confidence parameter (stat LB)  | 2.0      | 
+
+## Execution Structure 
+
+Each move m is accepted only if: 
+1. Its resulting tour length ≥ LB (logical validity) 
+2. Benefit(m) ≥ τ × Cost(m) (logical profitability) 
+
+## Cluster Assignment 
+
+- Uses multi-scale DBSCAN 
+- Cluster labels are assigned during geometric preprocessing 
+
+
+
+
+
+
+
+
+
+
+
+
 CombinedROIAlgUnified v3 – ROI-Filtered TSP Meta-Solver
 
 A single Julia 1.10 script that never wastes a CPU cycle: every local move is executed only when
