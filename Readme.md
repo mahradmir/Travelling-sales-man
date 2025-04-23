@@ -1,3 +1,124 @@
+# Hierarchical Epsilon-ROI TSP Solver  
+> Scalable (1+ε)-approximation for the Euclidean Traveling Salesman Problem with optional exact phases
+
+**Keywords:** TSP, Traveling Salesman Problem, approximation algorithm, hierarchical clustering, ROI-gated k-opt, Delaunay triangulation, pure-logic specification
+
+---
+
+## 🚀 Overview  
+Hierarchical Epsilon-ROI is a pure-logic, **O(N)**-time algorithm that computes a tour of length ≤(1+ε)·OPT on any N-point 2D Euclidean graph, with provable error and runtime guarantees. Optional “exact” phases at cluster or global level deliver true optimality when enabled.
+
+---
+
+## ✨ Key Features  
+- **Linear Scalability:** Runtime ≈ N·(t₀/s₀ + t₁/s₁ + ε²·t₂) = O(N)  
+- **(1+ε)-Approximation:** Tour length guaranteed ≤ (1+ε)·OPT for any ε∈(0,1]  
+- **ROI-Gated Moves:** Only profitable k-opt exchanges pass dual-ROI validity checks (ΔL vs. compute cost)  
+- **Hierarchical Clustering:** Three levels (s₀=8, s₁=50, s₂=⌈1/ε²⌉) for local refinement and stitching  
+- **Optional Exact Phases:** Accelerated exact solve via Delaunay-based branch-and-bound at cluster/global level  
+- **Pure-Logic Spec:** Formal axioms, definitions, and theorem ensure reproducibility and auditability  
+
+
+
+
+⸻
+
+📑 Algorithm Overview
+	1.	Compute Lower Bound: MST-1tree or equivalent → LB(G)
+	2.	Hierarchical Levels (ℓ=0,1,2):
+	•	Partition V into clusters of size ≤ sₗ
+	•	Local Nearest-Neighbor or ExtractSubtour
+	•	ROI-Gated k-opt refinement (τ_d,τ_t, k, C from ε)
+	3.	Stitching: ROI-Gated k-opt on cluster centroids + inter-cluster moves
+	4.	Optional Exact Phases: AcceleratedExactPhase on each cluster or full graph using Delaunay triangulation + branch-and-bound
+	5.	Return final tour T_current with len(T) ≤(1+ε)·OPT
+
+See PURE_LOGIC_PROOF.md for the full formal specification.
+
+⸻
+
+🤝 Contributing
+	1.	Fork this repository
+	2.	Create a feature branch (git checkout -b feature-xyz)
+	3.	Commit your changes (git commit -m "Add xyz")
+	4.	Push to your branch (git push origin feature-xyz)
+	5.	Open a Pull Request
+
+⸻
+
+📄 License
+
+This project is licensed under the MIT License. See LICENSE for details.
+
+⸻
+
+
+
+⸻
+
+حل‌کننده TSP با روش Hierarchical Epsilon-ROI
+
+الگوریتم خطی با تضمین خطای (1+ε) و فازهای دقیق اختیاری
+
+کلیدواژه‌ها: مسئله مسافر دوره‌گرد، الگوریتم تقریب‌پذیر، خوشه‌بندی سلسله‌مراتبی، حرکت‌های ROI، مثلث‌بندی دِلاونی، مستند منطق محض
+
+⸻
+
+🚀 مرور کلی
+
+Hierarchical Epsilon-ROI یک الگوریتم O(N) برای حل مسئله TSP در گراف‌های دکارتی دو‌بعدی است که طول مسیر ≤(1+ε)·OPT را تضمین می‌کند. فازهای «دقیق» خوشه‌ای یا سراسری در صورت فعال‌سازی، به راه‌حل بهینه مطلق می‌رسند.
+
+⸻
+
+✨ ویژگی‌های کلیدی
+	•	مقیاس‌پذیری خطی: زمان اجرا ≈ N·(t₀/s₀ + t₁/s₁ + ε²·t₂) = O(N)
+	•	تضمین خطای (1+ε): طول مسیر ≤ (1+ε)·OPT
+	•	حرکت‌های ROI: تنها مبادلات k-opt با ارزش خالص مثبت اجرا می‌شوند
+	•	خوشه‌بندی سلسله‌مراتبی: سه سطح با اندازه‌های s₀=8، s₁=50، s₂=⌈1/ε²⌉
+	•	فازهای دقیق اختیاری: حل دقیق بر پایهٔ مثلث‌بندی دِلاونی و branch-and-bound
+	•	مستندسازی منطق محض: آکس‌یو‌م‌ها، تعاریف و قضیه برای تکرار‌پذیری کامل
+
+⸻
+
+
+
+
+
+📑 خلاصه الگوریتم
+	1.	محاسبه حد پایین: MST-1tree → LB(G)
+	2.	سه سطح سلسله‌مراتبی:
+	•	خوشه‌بندی V به اندازه ≤ sₗ
+	•	تور اولیه NN یا استخراج زیرتور
+	•	بهبود ROI-Gated k-opt (پارامترها بر اساس ε)
+	3.	دوختن خوشه‌ها: k-opt روی مراکز خوشه + مبادلات بین‌خوشه‌ای
+	4.	فازهای دقیق اختیاری: AcceleratedExactPhase با مثلث‌بندی دِلاونی
+	5.	خروجی: مسیر نهایی T_current با طول ≤(1+ε)·OPT
+
+مستند منطق محض را در PURE_LOGIC_PROOF.md مشاهده کنید.
+
+⸻
+
+🤝 مشارکت
+	1.	پروژه را فورک کنید
+	2.	برنچ بسازید (git checkout -b feature-xyz)
+	3.	تغییرات را کامیت کنید (git commit -m "Add xyz")
+	4.	به مخزن خود پوش کنید (git push origin feature-xyz)
+	5.	Pull Request باز کنید
+
+⸻
+
+📄 مجوز
+
+این پروژه تحت MIT License منتشر شده است. جزئیات در LICENSE.
+
+
+
+
+
+
+
+
+
 v4
 ## Description 
 This algorithm solves large-scale instances of the Euclidean Traveling Salesman Problem (TSP) using a multi-stage adaptive architecture. It ensures that every computation step is logically justified, absolutely profitable, and verifiably non-redundant. It is built entirely within the framework of deductive logic and arithmetic reasoning. 
